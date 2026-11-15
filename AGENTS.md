@@ -482,7 +482,7 @@ the owner-provided status until their authorized verification/change.
 | Token claims, token type checks, token_valid_after | Section 8 | Implemented (CFP claims and DB-backed invalidation tests) |
 | Rate limiting | Section 8 | Implemented (CFP boundary and lockout tests; one process only) |
 | Password policy, login timing equalization, unique lower(email) | Section 8 | Implemented (CFP policy, timing and reversible migration tests) |
-| Consent capture and legal documents | Section 8 | Implemented (CFP versioned capture/pages; owner legal review pending) |
+| Consent capture and legal documents | Section 8 | Implemented (CFP versioned capture/pages; owner legal review pending; owner Section 8 deployment exception removed draft review markers on 2026-11-15) |
 | Image metadata removal (avatars, public media) | Section 8 | Implemented (CFP decode/reencode and stored-file verification) |
 | Single HTML renderer and lint guard | Section 8 | Implemented (CFP shared renderer and XSS corpus) |
 | Security headers and CSP | Section 8 | Implemented (CFP enforcing nonce CSP; 234 visits, zero findings) |

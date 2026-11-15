@@ -109,8 +109,10 @@ CFP executed this only on development: ten rows, subsequent dry run zero.
 
 ## Legal, accounts, logging and review
 
-- The owner must supply reviewed English Terms and Privacy texts. Both current files
-  contain PENDING_LEGAL_REVIEW; production startup refuses them. When replacing the
+- The owner must supply reviewed English Terms and Privacy texts. For this deployment, the owner explicitly
+  waived the Section 8 marker requirement on 2026-11-15: both markers were removed,
+  while the documents remain drafting skeletons awaiting reviewed replacements.
+  The startup guard still rejects PENDING_LEGAL_REVIEW if present. When replacing the
   drafting skeletons, bump LEGAL_VERSIONS and effective dates so development receipts
   cannot count as acceptance of a different final policy. Verify new consent receipts
   and the existing-user consent gate; backend-wide consent enforcement is out of scope.

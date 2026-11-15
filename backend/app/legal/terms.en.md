@@ -1,7 +1,5 @@
 # Terms of use — owner drafting skeleton
 
-PENDING_LEGAL_REVIEW
-
 ## Responsible organization
 
 State the legal identity, address and contact details of the organization responsible for this program and its data.

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import { copy } from "@/lib/copy/dictionary";
 import { testPassword } from "@/tests/e2e/helpers/index";
 
 for (const language of ["en"] as const) {
@@ -29,7 +30,8 @@ for (const language of ["en"] as const) {
       const popupEvent = page.waitForEvent("popup");
       await page.locator(`fieldset a[href="/${kind}"]`).click();
       const popup = await popupEvent;
-      await expect(popup.getByText("Legal text pending review", { exact: true })).toBeVisible();
+      await expect(popup.locator(".prose-gsp")).toContainText("owner drafting skeleton");
+      await expect(popup.getByText(copy.common.legalPending, { exact: true })).toHaveCount(0);
       await expect(popup.locator(".prose-gsp h2").first()).toBeVisible();
       await expect(popup.getByText(/2026-11-01/).first()).toBeVisible();
       await popup.close();
@@ -64,7 +66,8 @@ test("CFP existing user is gated with the static interface while legal pages rem
     for (const kind of ["terms", "privacy"]) {
       await page.goto(`/${kind}`);
       await expect(page).toHaveURL(new RegExp(`/${kind}$`));
-      await expect(page.getByText("Legal text pending review", { exact: true })).toBeVisible();
+      await expect(page.locator(".prose-gsp")).toContainText("owner drafting skeleton");
+      await expect(page.getByText(copy.common.legalPending, { exact: true })).toHaveCount(0);
     }
   }
   await page.goto("/dashboard");
@@ -76,4 +79,16 @@ test("CFP existing user is gated with the static interface while legal pages rem
   expect((await accepted).status()).toBe(200);
   await expect(page).toHaveURL(/\/dashboard/);
   expect(hydration).toEqual([]);
+});
+
+test("legal review notice still appears when a document is marked pending", async ({ page }) => {
+  const api = process.env.GSP_E2E_API_URL ?? "http://127.0.0.1:8101";
+  await page.route(`${api}/legal/terms`, async route => {
+    const response = await route.fetch();
+    const document = await response.json();
+    await route.fulfill({ response, json: { ...document, review_pending: true } });
+  });
+  await page.goto("/terms");
+  await expect(page.getByText(copy.common.legalPending, { exact: true })).toBeVisible();
+  await expect(page.locator(".prose-gsp h2").first()).toBeVisible();
 });
