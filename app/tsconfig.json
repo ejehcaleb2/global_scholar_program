@@ -1,0 +1,65 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    ".next-e2e/types/**/*.ts",
+    "**/*.mts",
+    ".next-e2e/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next-batch5-verification",
+    ".next-course-manager-auth-check",
+    ".next-course-manager-auth-check-2",
+    ".next-course-manager-auth-check-3",
+    ".next-course-manager-auth-check-4",
+    ".next-course-manager-debug",
+    ".next-course-manager-e2e",
+    ".next-course-manager-final-build",
+    ".next-course-manager-full-e2e",
+    ".next-course-manager-full-e2e-default",
+    ".next-course-manager-history",
+    ".next-course-manager-history-2",
+    ".next-course-manager-history-3",
+    ".next-course-manager-history-4",
+    ".next-course-manager-history-5",
+    ".next-course-manager-history-6",
+    ".next-course-manager-production",
+    ".next-shell-restore",
+    ".next-shell-restore-manual",
+    ".next-shell-ui",
+    ".next-signup-verification"
+  ]
+}

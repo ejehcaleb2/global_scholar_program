@@ -1,0 +1,94 @@
+[
+  {
+    "id": "program-banner",
+    "variants": [
+      {
+        "width": 640,
+        "height": 360,
+        "url": "/media/landing/program-banner-640.webp",
+        "bytes": 39736
+      },
+      {
+        "width": 960,
+        "height": 540,
+        "url": "/media/landing/program-banner-960.webp",
+        "bytes": 71624
+      },
+      {
+        "width": 1440,
+        "height": 810,
+        "url": "/media/landing/program-banner-1440.webp",
+        "bytes": 129936
+      }
+    ]
+  },
+  {
+    "id": "classroom-session",
+    "variants": [
+      {
+        "width": 640,
+        "height": 480,
+        "url": "/media/landing/classroom-session-640.webp",
+        "bytes": 51738
+      },
+      {
+        "width": 960,
+        "height": 720,
+        "url": "/media/landing/classroom-session-960.webp",
+        "bytes": 87904
+      },
+      {
+        "width": 1440,
+        "height": 1080,
+        "url": "/media/landing/classroom-session-1440.webp",
+        "bytes": 149552
+      }
+    ]
+  },
+  {
+    "id": "students-with-booklet",
+    "variants": [
+      {
+        "width": 640,
+        "height": 360,
+        "url": "/media/landing/students-with-booklet-640.webp",
+        "bytes": 25330
+      },
+      {
+        "width": 960,
+        "height": 540,
+        "url": "/media/landing/students-with-booklet-960.webp",
+        "bytes": 47674
+      },
+      {
+        "width": 1440,
+        "height": 810,
+        "url": "/media/landing/students-with-booklet-1440.webp",
+        "bytes": 93528
+      }
+    ]
+  },
+  {
+    "id": "community-event",
+    "variants": [
+      {
+        "width": 640,
+        "height": 400,
+        "url": "/media/landing/community-event-640.webp",
+        "bytes": 49380
+      },
+      {
+        "width": 960,
+        "height": 600,
+        "url": "/media/landing/community-event-960.webp",
+        "bytes": 89746
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "url": "/media/landing/community-event-1440.webp",
+        "bytes": 156410
+      }
+    ]
+  }
+]

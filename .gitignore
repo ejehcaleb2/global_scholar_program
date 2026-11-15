@@ -1,0 +1,53 @@
+# Local program records, credentials and original/private data
+.work/
+.env*
+!**/.env.example
+!**/.env.*.example
+**/.seed-credentials*
+**/.seed-reset-report*
+backend/uploads/
+/Media/
+.aws/
+*.pem
+
+# Dependencies and generated frontend output
+node_modules/
+.venv/
+.next*/
+/app/out/
+/app/build/
+/app/next-env.d.ts
+/app/.pnp
+/app/.pnp.*
+/app/.yarn/*
+!/app/.yarn/patches
+!/app/.yarn/plugins
+!/app/.yarn/releases
+!/app/.yarn/versions
+.vercel/
+
+# Test, compiler and analysis output
+test-results/
+playwright-report/
+test-artifacts/
+coverage/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.py[cod]
+*.tsbuildinfo
+*.log
+backend/profile_pytest.txt
+backend/profile_tests_log.txt
+
+# Operating system/editor/tool-local files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+.cursor/
+.continue/
+.kilo/
+gsp-verify/
