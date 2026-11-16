@@ -95,7 +95,7 @@ export default function HomepagePostsPage() {
     <div className="mx-auto w-full max-w-[1600px] px-5 py-8 sm:px-8 lg:px-10">
       <AdminPageHeader
         title={t.admin.homepageContent}
-        description={t.admin.homepageSubtitle}
+        description={t.posts.purpose}
         actions={<Link href="/admin/homepage-posts/new" className="inline-flex min-h-11 items-center gap-2 rounded-[8px] bg-primary px-4 text-base font-semibold text-white transition-colors duration-200 ease-out hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Plus size={18} aria-hidden="true" />{t.admin.newPost}</Link>}
       />
 
@@ -143,7 +143,7 @@ export default function HomepagePostsPage() {
                 </div>
               </td>
               <td className="whitespace-nowrap px-4 py-3 text-base text-text">{post.status === "draft" || !post.published_at ? "—" : <LocalTime value={post.published_at} options={{ dateStyle: "medium" }} />}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-right"><Link href={`/admin/homepage-posts/${post.id}/edit`} aria-label={interpolate(t.admin.editPost, { title: post.title })} className="inline-flex min-h-11 items-center justify-center rounded-[8px] px-4 text-base font-semibold text-primary transition-colors duration-200 ease-out hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{t.admin.edit}</Link></td>
+              <td className="whitespace-nowrap px-4 py-3 text-right">{post.status === "published" && <Link href={`/posts/${post.id}`} target="_blank" rel="noopener noreferrer" aria-label={t.posts.viewPostLabel.replace("{title}", post.title)} className="inline-flex min-h-11 items-center justify-center rounded-[8px] px-3 text-base font-semibold text-primary transition-colors duration-200 ease-out hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{t.posts.viewPost}</Link>}<Link href={`/admin/homepage-posts/${post.id}/edit`} aria-label={interpolate(t.admin.editPost, { title: post.title })} className="inline-flex min-h-11 items-center justify-center rounded-[8px] px-4 text-base font-semibold text-primary transition-colors duration-200 ease-out hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{t.admin.edit}</Link></td>
             </tr>
           );
         })}

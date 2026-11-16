@@ -510,6 +510,7 @@ the owner-provided status until their authorized verification/change.
 | Profile and account settings | Section 11 | Implemented (shared save states, safe drafts/discard, contextual navigation, inline account validation, independent membership recovery; frontend UX browser evidence) |
 | Logout confirmation | Section 11 | Implemented (shared student/admin/consent confirmation, cancel/Escape/focus containment, coordinated home redirect and session cleanup; logout confirmation evidence) |
 | Public navigation and layout | Section 11 | Implemented (centered responsive width, shared logo/footer, animated hover/focus, chevron-free section navigation after layout readiness, direct resource/opportunity/service routes; landing navigation browser evidence) |
+| Homepage editorial posts | Section 9 | Implemented (Read more opens matching publications; ordered text/photo/video sections, shared draft preview, secure links/uploads and load recovery; homepage-posts evidence) |
 
 ## Repository layout and scripts
 

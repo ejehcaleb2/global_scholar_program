@@ -136,3 +136,52 @@ change. Membership loading has an independent retry region and cannot hide the
 email/password forms. Both existing settings routes are available in the settings
 sidebar. Password reset, billing, export and deletion are not added by these forms.
 
+
+## Homepage updates
+
+Homepage posts are public editorial content: program announcements, practical
+guides and updates. They are separate from the authenticated course curriculum.
+In **Homepage posts**, write a title and a short card summary, then put complete
+details in the rich-text body. Select meaningful words and choose **Insert link**
+to add a full HTTP(S) destination. Unsafe schemes are rejected.
+
+Save as a draft to keep it private, or publish to make its `/posts/<id>` page
+public. **View post** opens the last saved published version in a new tab;
+**Preview** checks unsaved edits. Pinning controls the homepage's three-card
+selection and ordering. Unpublishing or deleting removes public access.
+
+Only **Read more** opens the matching full publication. Its pending indicator
+stays inside that link; the cover, title and overview remain visible.
+Articles include a return link to the homepage updates section, optional image,
+publication date and sanitized rich text. A temporary API failure offers Retry;
+a missing or unpublished post shows a distinct unavailable state. Post mutations
+invalidate public list/detail caches as well as admin lists, statistics and audit
+queries. Existing focus/reconnect refetch behavior applies across sessions.
+
+Regression coverage: `public/homepage-post-reading.spec.ts` exercises editor
+links, image upload, draft privacy, publication, public navigation, external
+destinations, unpublishing and error recovery. `admin/homepage-pin-flow.spec.ts`
+covers pin ordering and deletion. Both run only through the isolated E2E wrapper.
+
+Publications can contain up to 50 additional ordered sections: rich text, photos
+with required descriptive alt text and optional captions, or supported HTTPS
+YouTube/Vimeo videos. The opening text is optional when sections supply the
+content. Use the move controls to reorder sections and the confirmation dialog
+to remove one from the draft. Section actions remain local until Save; published
+edits appear after Save. Draft preview uses the same PublicationContent renderer
+as the public page. Direct video uploads are outside the current storage design.
+
+Deploy the backend migration `f8b2c4d6e0a1` before the frontend: from the backend
+root run `python -m alembic upgrade head` using the deployment database settings,
+then start Uvicorn. This adds an empty JSONB sections array to existing posts; it
+does not rewrite their text, covers or status. Keep applied migrations immutable.
+On Render without Shell, include the migration in the service start command
+(`python -m alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1`)
+or use a supported pre-deploy command. Uploaded images still require persistent
+backend storage; external video providers control embedding availability.
+
+Publication validation is field-specific. Save highlights the exact text, photo
+URL, photo description, video URL or caption that needs attention, names its
+section, and focuses the first invalid input without clearing the draft. Photo
+descriptions are required for accessibility; captions are optional. Text-only,
+photo-only and video-only publications can publish without opening text.

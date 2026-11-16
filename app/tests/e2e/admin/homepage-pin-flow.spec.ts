@@ -39,7 +39,7 @@ test("create, publish, pin, reorder, unpin, unpublish, and delete homepage post"
     const toggle = targetRow.getByRole("switch");
     const current = (await toggle.getAttribute("aria-checked")) === "true";
     if (current !== checked) {
-      const editHref = await targetRow.getByRole("link").getAttribute("href");
+      const editHref = await targetRow.locator('a[href$="/edit"]').getAttribute("href");
       const postId = editHref?.match(/homepage-posts\/([^/]+)\/edit/)?.[1];
       if (!postId) throw new Error(`Could not identify homepage post ${title}`);
       const updateResponse = page.waitForResponse((response) => {
@@ -113,7 +113,8 @@ test("create, publish, pin, reorder, unpin, unpublish, and delete homepage post"
     detailUrl = postId ? `/posts/${postId.match(/homepage-posts\/([^/]+)\/edit/)?.[1]}` : "";
     await page.goto("/");
     await expect(page.locator("article").filter({ has: page.getByRole("heading", { name: title, exact: true }) })).toBeVisible();
-    await page.goto(detailUrl);
+    await page.locator("#updates article").filter({ has: page.getByRole("heading", { name: title, exact: true }) }).getByRole("link").click();
+    await expect(page).toHaveURL(detailUrl);
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
 
     await createPublishedPost(peerTitle, true);

@@ -1,7 +1,13 @@
 import { apiFetch } from "@/lib/api/client";
 
 
+export type PostSection =
+  | { id: string; type: "text"; body_html: string }
+  | { id: string; type: "image"; url: string; alt: string; caption: string }
+  | { id: string; type: "video"; url: string; caption: string };
+
 export type HomepagePost = {
+  sections: PostSection[];
   id: string;
   title: string;
   thumbnail_url: string | null;
@@ -16,7 +22,7 @@ export type HomepagePost = {
 };
 
 
-export type PublicHomepagePost = Pick<HomepagePost, "id" | "title" | "summary" | "thumbnail_url" | "body_html" | "published_at">;
+export type PublicHomepagePost = Pick<HomepagePost, "id" | "title" | "summary" | "thumbnail_url" | "body_html" | "sections" | "published_at">;
 
 
 export async function getHomepagePosts(): Promise<HomepagePost[]> {
@@ -40,7 +46,7 @@ export async function getAdminHomepagePost(postId: string): Promise<HomepagePost
 }
 
 
-export async function createAdminHomepagePost(payload: Pick<HomepagePost, "title" | "summary" | "body_html" | "thumbnail_url" | "status" | "pinned">): Promise<HomepagePost> {
+export async function createAdminHomepagePost(payload: Pick<HomepagePost, "title" | "summary" | "body_html" | "thumbnail_url" | "status" | "pinned" | "sections">): Promise<HomepagePost> {
   return apiFetch<HomepagePost>("/admin/homepage-posts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -49,7 +55,7 @@ export async function createAdminHomepagePost(payload: Pick<HomepagePost, "title
 }
 
 
-export async function updateAdminHomepagePost(postId: string, payload: { expected_updated_at?: string } & Partial<Pick<HomepagePost, "title" | "summary" | "body_html" | "thumbnail_url" | "status" | "pinned" | "pin_order">>): Promise<HomepagePost> {
+export async function updateAdminHomepagePost(postId: string, payload: { expected_updated_at?: string } & Partial<Pick<HomepagePost, "title" | "summary" | "body_html" | "thumbnail_url" | "status" | "pinned" | "pin_order" | "sections">>): Promise<HomepagePost> {
   return apiFetch<HomepagePost>(`/admin/homepage-posts/${postId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

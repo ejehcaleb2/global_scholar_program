@@ -193,6 +193,7 @@ select,
 }
 
 .prose-gsp {
+  overflow-wrap: anywhere;
   color: var(--color-text);
   font-family: var(--font-body), sans-serif;
   font-size: 1.0625rem;
@@ -234,4 +235,14 @@ select,
 .prose-gsp a {
   color: var(--color-primary);
   text-decoration: underline;
+}
+
+.prose-gsp blockquote {
+  border-inline-start: 2px solid var(--color-border);
+  padding-inline-start: 1rem;
+  font-style: italic;
+}
+
+.prose-gsp pre {
+  overflow-x: auto;
 }
