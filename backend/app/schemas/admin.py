@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.gsp_models import AccessType, CourseStatus
+from app.schemas.homepage_post import PublicationSections
 from app.schemas.content import LessonResource, LessonVideoResponse, ModuleResponse, SanitizedContentFields, SanitizedLessonFields
 
 
@@ -84,7 +85,7 @@ class HomepagePostReorder(BaseModel):
     ordered_ids: list[UUID] = Field(min_length=1, max_length=3)
 
 
-class PublicHomepagePostResponse(BaseModel):
+class PublicHomepagePostResponse(PublicationSections):
     id: UUID
     title: str
     summary: str | None

@@ -423,6 +423,7 @@ class HomepagePost(Base):
     thumbnail_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     body_html: Mapped[str] = mapped_column(Text, nullable=False)
+    sections: Mapped[list] = mapped_column(JSONB, nullable=False, default=list, server_default=sa.text("'[]'::jsonb"))
     status: Mapped[HomepageStatus] = mapped_column(
         sa.Enum(HomepageStatus, name='homepage_post_status', create_type=True),
         nullable=False,
