@@ -29,7 +29,7 @@ AUDIT_ACTIONS = {
 }
 
 SECRET_KEYS = {'password', 'hashed_password', 'token', 'access_token', 'refresh_token', 'secret', 'api_key', 'authorization'}
-LONG_TEXT_FIELDS = {'body_html', 'description', 'body', 'lesson_body', 'content'}
+LONG_TEXT_FIELDS = {'body_html', 'description', 'body', 'lesson_body', 'content', 'sections'}
 
 
 def _prune_change_value(field_name: str, value):

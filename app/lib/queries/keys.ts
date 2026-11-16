@@ -25,4 +25,5 @@ export const queryKeys = {
   avatar: (scope: string, id: string, version: string, size: number) => ["avatars", scope, id, version, size] as const,
   profile: ["student", "profile"] as const,
   homepagePosts: ["public", "homepage-posts"] as const,
+  homepagePost: (id: string) => ["public", "homepage-post", id] as const,
 };

@@ -56,7 +56,7 @@ async def create_homepage_post(
 ) -> HomepagePostResponse:
     pin_order = await _validate_pin_request(db, payload.pinned, payload.status, payload.pin_order)
     post = HomepagePost(
-        **payload.model_dump(exclude={'body_html', 'pin_order'}),
+        **payload.model_dump(mode='json', exclude={'body_html', 'pin_order'}),
         body_html=sanitize_html(payload.body_html),
         pin_order=pin_order,
         published_at=datetime.now(timezone.utc) if payload.status == HomepageStatus.published else None,
@@ -81,6 +81,8 @@ async def update_homepage_post(
         raise HTTPException(status_code=404, detail='Homepage post not found')
     changes = payload.model_dump(exclude_unset=True)
     _require_current_version(post, changes.pop('expected_updated_at', None))
+    if 'sections' in changes:
+        changes['sections'] = payload.model_dump(mode='json')['sections']
     previous_status = post.status
     previous_pinned = post.pinned
     new_status = changes.get('status', post.status)
@@ -249,5 +251,6 @@ async def get_public_homepage_post(
         summary=post.summary,
         thumbnail_url=post.thumbnail_url,
         body_html=sanitize_html(post.body_html),
+        sections=post.sections,
         published_at=post.published_at or post.created_at,
     )

@@ -102,6 +102,56 @@ class HomepagePostTests(TestCase):
         }
         return self.loop.run_until_complete(self.client.post('/admin/homepage-posts', headers=self.headers(self.admin_id), json=payload))
 
+    def test_multimedia_sections_persist_order_sanitize_and_remain_private(self) -> None:
+        sections = [
+            {'id': str(uuid.uuid4()), 'type': 'text', 'body_html': '<h2>Guide</h2><script>alert(1)</script><a href="javascript:alert(1)">unsafe</a>'},
+            {'id': str(uuid.uuid4()), 'type': 'image', 'url': 'https://example.org/photo.jpg', 'alt': 'Students studying', 'caption': 'Program photo'},
+            {'id': str(uuid.uuid4()), 'type': 'video', 'url': 'https://youtu.be/jNQXAC9IVRw', 'caption': 'Video introduction'},
+        ]
+        created = self.create(status='draft', sections=sections)
+        self.assertEqual(created.status_code, 201, created.text)
+        post_id = created.json()['id']
+        saved = created.json()['sections']
+        self.assertEqual([item['type'] for item in saved], ['text', 'image', 'video'])
+        self.assertNotIn('<script', saved[0]['body_html'])
+        self.assertNotIn('href="javascript:', saved[0]['body_html'])
+        self.assertEqual(saved[2]['url'], 'https://www.youtube.com/watch?v=jNQXAC9IVRw')
+        self.assertEqual(self.loop.run_until_complete(self.client.get(f'/homepage-posts/{post_id}')).status_code, 404)
+        denied = self.loop.run_until_complete(self.client.patch(f'/admin/homepage-posts/{post_id}', headers=self.headers(self.student_id), json={'sections': []}))
+        self.assertEqual(denied.status_code, 403)
+        updated = self.loop.run_until_complete(self.client.patch(f'/admin/homepage-posts/{post_id}', headers=self.headers(self.admin_id), json={'status': 'published', 'sections': list(reversed(sections)), 'expected_updated_at': created.json()['updated_at']}))
+        self.assertEqual(updated.status_code, 200, updated.text)
+        public = self.loop.run_until_complete(self.client.get(f'/homepage-posts/{post_id}'))
+        self.assertEqual(public.status_code, 200)
+        self.assertEqual([item['type'] for item in public.json()['sections']], ['video', 'image', 'text'])
+        stale = self.loop.run_until_complete(self.client.patch(f'/admin/homepage-posts/{post_id}', headers=self.headers(self.admin_id), json={'sections': [], 'expected_updated_at': created.json()['updated_at']}))
+        self.assertEqual(stale.status_code, 409)
+        async def audit():
+            async with AsyncSessionLocal() as session:
+                return (await session.scalars(select(AuditLog).where(AuditLog.entity_id == post_id))).all()
+        logs = self.loop.run_until_complete(audit())
+        self.assertEqual(len(logs), 2)
+        self.assertNotIn('Students studying', str([row.extra_data for row in logs]))
+
+    def test_section_validation_rejects_unsafe_or_invalid_content(self) -> None:
+        invalid = [
+            {'type': 'image', 'url': 'javascript:alert(1)', 'alt': 'Photo'},
+            {'type': 'image', 'url': 'https://example.org/photo.jpg', 'alt': ' '},
+            {'type': 'video', 'url': 'https://evil.example/embed/test'},
+            {'type': 'video', 'url': 'http://youtube.com/watch?v=jNQXAC9IVRw'},
+            {'type': 'text', 'body_html': '<p> </p>'},
+            {'type': 'iframe', 'url': 'https://example.org'},
+        ]
+        for section in invalid:
+            with self.subTest(section=section['type']):
+                self.assertEqual(self.create(sections=[{'id': str(uuid.uuid4()), **section}]).status_code, 422)
+        section = {'id': str(uuid.uuid4()), 'type': 'text', 'body_html': '<p>Valid</p>'}
+        self.assertEqual(self.create(sections=[section, section]).status_code, 422)
+        self.assertEqual(self.create(sections=[{**section, 'id': str(uuid.uuid4())} for _ in range(51)]).status_code, 422)
+        legacy = self.create()
+        self.assertEqual(legacy.status_code, 201)
+        self.assertEqual(legacy.json()['sections'], [])
+
     def test_pinning_rules_and_published_at_preservation(self) -> None:
         draft = self.create(title='Test Homepage Draft', status='draft', pinned=True)
         self.assertEqual(draft.status_code, 422)

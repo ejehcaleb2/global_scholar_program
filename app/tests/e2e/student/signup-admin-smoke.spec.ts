@@ -31,6 +31,7 @@ test("RCP student signup, returning login and administrator discovery", async ({
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.getByRole("button", { name: "Log Out", exact: true }).click();
   await page.getByRole("alertdialog", { name: "Log out?" }).getByRole("button", { name: "Log Out", exact: true }).click();
+  await expect(page).toHaveURL("/");
   await page.goto("/login");
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill(testPassword);

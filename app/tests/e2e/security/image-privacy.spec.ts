@@ -43,6 +43,7 @@ test("CFP private avatar appears in settings, shared sidebars, admin students an
     await page.screenshot({ path: "test-artifacts/cfp-avatar-countdown.png" });
     await page.getByRole("button", { name: "Log Out", exact: true }).click();
     await page.getByRole("alertdialog", { name: "Log out?" }).getByRole("button", { name: "Log Out", exact: true }).click();
+    await expect(page).toHaveURL("/");
     await loginThroughUi(page);
     await page.goto("/admin/students");
     await expect(page.getByRole("row").filter({ hasText: studentEmail }).locator("img")).toHaveAttribute("src", /^data:image\/webp/);

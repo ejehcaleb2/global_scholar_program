@@ -5,19 +5,20 @@ import { RateLimitAlert } from "@/components/auth/rate-limit-alert";
 
 
 import { useEditSafety } from "@/components/admin/ui/use-edit-safety";
-import { RichTextLinkDialog } from "@/components/admin/ui/rich-text-link-dialog";
+import { PublicationTextEditor } from "./publication-text-editor";
+import { PublicationSectionsEditor } from "./publication-sections-editor";
+import { PublicationContent } from "@/components/landing/publication-content";
 import { Button } from "@/components/ui/button";
 import Link from "@/components/ui/pending-link";
 import { useRouter } from "next/navigation";
-import { useEditor, useEditorState, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "@/lib/utils/zod";
-import { Bold, ChevronLeft, Heading2, Heading3, Italic, Link2, List, ListOrdered, LoaderCircle, Quote, Trash2, Upload, X } from "lucide-react";
+import { isHttpUrl } from "@/lib/utils/urls";
+import { parseLessonVideo } from "@/lib/utils/video";
+import { ChevronLeft, LoaderCircle, Trash2, Upload, X } from "lucide-react";
 import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useCopy } from "@/lib/copy/provider";
 import { useToast } from "@/components/ui/toast-provider";
-import { RichContent } from "@/components/ui/rich-content";
 import { AdminPageHeader, ConfirmDialog, FormField, SwitchToggle } from "@/components/admin/ui/primitives";
 import {
   createAdminHomepagePost,
@@ -33,9 +34,9 @@ import { MediaImage } from "@/components/ui/media-image";
 
 type Props = { postId?: string };
 type EditorProps = { initialPost?: HomepagePost };
-type FormData = Pick<HomepagePost, "title" | "summary" | "body_html" | "thumbnail_url" | "status" | "pinned">;
+type FormData = Pick<HomepagePost, "title" | "summary" | "body_html" | "thumbnail_url" | "status" | "pinned" | "sections">;
 
-const emptyForm: FormData = { title: "", summary: "", body_html: "", thumbnail_url: null, status: "draft", pinned: false };
+const emptyForm: FormData = { title: "", summary: "", body_html: "", thumbnail_url: null, status: "draft", pinned: false, sections: [] };
 
 function isBodyEmpty(html: string) {
   return html.replace(/<[^>]*>/g, "").replace(/&nbsp;|&#160;/gi, " ").trim().length === 0;
@@ -54,11 +55,16 @@ function validationSchema(t: ReturnType<typeof useCopy>["t"]) {
   return z.object({
     title: z.string().trim().min(1, t.admin.titleRequired).max(255),
     summary: z.string().max(2000),
-    body_html: z.string().refine((value) => !isBodyEmpty(value), t.admin.bodyRequired),
+    body_html: z.string(),
     thumbnail_url: z.string().nullable().refine((value) => value === null || safeImageUrl(value), t.admin.linkInvalid),
     status: z.enum(["draft", "published"]),
     pinned: z.boolean(),
-  });
+    sections: z.array(z.discriminatedUnion("type", [
+      z.object({ id: z.string(), type: z.literal("text"), body_html: z.string().max(200000, t.posts.sectionTextTooLong).refine(value => !isBodyEmpty(value), t.posts.sectionTextRequired) }),
+      z.object({ id: z.string(), type: z.literal("image"), url: z.string().trim().min(1, t.posts.photoUrlRequired).max(500, t.posts.sectionUrlTooLong).refine(value => !value || isHttpUrl(value), t.admin.linkInvalid), alt: z.string().trim().min(1, t.posts.photoDescriptionRequired).max(300, t.posts.photoDescriptionTooLong), caption: z.string().trim().max(1000, t.posts.sectionCaptionTooLong) }),
+      z.object({ id: z.string(), type: z.literal("video"), url: z.string().trim().min(1, t.posts.videoUrlRequired).max(500, t.posts.sectionUrlTooLong).refine(value => !value || Boolean(parseLessonVideo(value)), t.posts.videoUrlInvalid), caption: z.string().trim().max(1000, t.posts.sectionCaptionTooLong) }),
+    ])).max(50, t.posts.sectionLimit),
+  }).refine(value => !isBodyEmpty(value.body_html) || value.sections.length > 0, { path: ["body_html"], message: t.admin.bodyRequired });
 }
 
 export function AdminPostForm({ postId }: Props) {
@@ -95,13 +101,14 @@ function AdminPostFormEditor({ initialPost }: EditorProps) {
     thumbnail_url: initialPost.thumbnail_url,
     status: initialPost.status,
     pinned: initialPost.pinned,
+    sections: initialPost.sections ?? [],
   } : emptyForm;
   const initialRef = useRef<FormData>(initialForm);
   const originalRevision = useRef(initialPost?.updated_at);
   const [form, setForm] = useState<FormData>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState(false);
-  const [linkOpen, setLinkOpen] = useState(false);
+  const [sectionUploadBusy, setSectionUploadBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState(initialForm.thumbnail_url ?? "");
@@ -109,34 +116,14 @@ function AdminPostFormEditor({ initialPost }: EditorProps) {
   const dirty = JSON.stringify(form) !== JSON.stringify(initialRef.current);
   const postsQuery = useQuery({ queryKey: ["admin", "homepage-posts", { status: undefined }], queryFn: () => getAdminHomepagePosts() });
   const safety = useEditSafety({ draft: form, initial: initialForm, setDraft: (value: FormData) => {
-    setForm(value); editor?.commands.setContent(value.body_html, { emitUpdate: false });
+    setForm(value);
   }, loadLatest: async () => {
     const latest = await getAdminHomepagePost(postId!);
-    return { revision: latest.updated_at, draft: { title: latest.title, summary: latest.summary ?? "", body_html: latest.body_html, thumbnail_url: latest.thumbnail_url, status: latest.status, pinned: latest.pinned } };
+    return { revision: latest.updated_at, draft: { title: latest.title, summary: latest.summary ?? "", body_html: latest.body_html, thumbnail_url: latest.thumbnail_url, status: latest.status, pinned: latest.pinned, sections: latest.sections ?? [] } };
   } });
   const existing = initialPost;
   const pinnedCount = postsQuery.data?.filter((post) => post.pinned).length ?? 0;
   const canPin = form.status === "published" && (form.pinned || pinnedCount < 3);
-
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [2, 3] },
-        link: { openOnClick: false, protocols: ["http", "https"] },
-      }),
-    ],
-    content: form.body_html,
-    onUpdate: ({ editor: current }) => setForm((value) => ({ ...value, body_html: current.getHTML() })),
-    editorProps: {
-      attributes: {
-        class: "min-h-[280px] px-4 py-3 text-base leading-7 text-text focus:outline-none",
-        "aria-label": t.admin.body,
-      },
-    },
-  });
-
-  useEditorState({ editor, selector: ({ editor: current }) => ({ document: current?.state.doc, selection: current?.state.selection, marks: current?.state.storedMarks }) });
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -171,6 +158,7 @@ function AdminPostFormEditor({ initialPost }: EditorProps) {
       void queryClient.invalidateQueries({ queryKey: ["admin", "audit-logs"] });
       void queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
       void queryClient.invalidateQueries({ queryKey: ["public", "homepage-posts"] });
+      void queryClient.invalidateQueries({ queryKey: ["public", "homepage-post"] });
       initialRef.current = form;
       router.push("/admin/homepage-posts");
     },
@@ -215,6 +203,7 @@ function AdminPostFormEditor({ initialPost }: EditorProps) {
       void queryClient.invalidateQueries({ queryKey: ["admin", "homepage-posts"] });
       void queryClient.invalidateQueries({ queryKey: ["admin", "audit-logs"] });
       void queryClient.invalidateQueries({ queryKey: ["public", "homepage-posts"] });
+      void queryClient.invalidateQueries({ queryKey: ["public", "homepage-post"] });
       setConfirmDelete(false);
       router.push("/admin/homepage-posts");
     },
@@ -223,7 +212,13 @@ function AdminPostFormEditor({ initialPost }: EditorProps) {
 
   function setField<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((current) => ({ ...current, [key]: value }));
-    setErrors((current) => ({ ...current, [key]: "" }));
+    setErrors(current => {
+      if (key !== "sections" || !Object.keys(current).some(field => field.startsWith("sections"))) return { ...current, [key]: "" };
+      const validation = schema.safeParse({ ...form, [key]: value });
+      const remaining = Object.fromEntries(Object.entries(current).filter(([field]) => !field.startsWith("sections")));
+      if (!validation.success) for (const issue of validation.error.issues) if (issue.path[0] === "sections") remaining[issue.path.join(".")] = issue.message;
+      return remaining;
+    });
   }
 
   function leaveTo(url: string) {
@@ -234,7 +229,16 @@ function AdminPostFormEditor({ initialPost }: EditorProps) {
   function submit() {
     const result = schema.safeParse(form);
     if (!result.success) {
-      setErrors(Object.fromEntries(result.error.issues.map((issue) => [String(issue.path[0] ?? "form"), issue.message])));
+      setErrors(Object.fromEntries(result.error.issues.map(issue => [issue.path.join(".") || "form", issue.message])));
+      const first = result.error.issues[0];
+      const index = typeof first.path[1] === "number" ? first.path[1] : undefined;
+      const section = index === undefined ? undefined : form.sections[index];
+      const label = section ? t.posts.sectionLabel.replace("{type}", section.type === "text" ? t.posts.textSection : section.type === "image" ? t.posts.imageSection : t.posts.videoSection).replace("{number}", String(index! + 1)) : "";
+      if (section) addToast(t.posts.validationTitle, t.posts.validationSection.replace("{section}", label).replace("{message}", first.message), "error");
+      const field = section ? document.getElementById(first.path[2] === "body_html" ? `section-${section.id}` : `${String(first.path[2])}-${section.id}`) : document.getElementById(first.path[0] === "body_html" ? "post-body" : `post-${String(first.path[0])}`);
+      const input = field?.matches("input, textarea") ? field : field?.querySelector<HTMLElement>('[contenteditable="true"]');
+      input?.focus();
+      field?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
       return;
     }
     setErrors({});
@@ -261,26 +265,26 @@ function AdminPostFormEditor({ initialPost }: EditorProps) {
     void handleImage(event.dataTransfer.files[0]);
   }
 
-  function insertLink() { setLinkOpen(true); }
-
   const title = isEdit ? t.admin.editPostTitle : t.admin.newPostTitle;
-  const saveButton = <Button loading={saveMutation.isPending} loadingLabel={t.admin.saving} type="button" onClick={submit} disabled={saveMutation.isPending || uploadMutation.isPending} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[8px] bg-primary px-5 text-base font-semibold text-white transition-colors duration-200 ease-out hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{t.admin.save}</Button>;
+  const saveButton = <Button loading={saveMutation.isPending} loadingLabel={t.admin.saving} type="button" onClick={submit} disabled={saveMutation.isPending || uploadMutation.isPending || sectionUploadBusy} title={sectionUploadBusy || uploadMutation.isPending ? t.posts.uploadBusy : undefined} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[8px] bg-primary px-5 text-base font-semibold text-white transition-colors duration-200 ease-out hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{t.admin.save}</Button>;
 
   return (
     <main className="mx-auto w-full max-w-[720px] px-5 py-8 sm:px-8">
       <Button type="button" onClick={() => leaveTo("/admin/homepage-posts")} className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-[8px] px-2 text-base font-semibold text-primary transition-colors duration-200 ease-out hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><ChevronLeft size={18} aria-hidden="true" />{t.admin.backToPosts}</Button>
       {safety.dialogs}
-      <RichTextLinkDialog open={linkOpen} onClose={() => setLinkOpen(false)} onSave={(url) => { editor?.chain().focus().extendMarkRange("link").setLink({ href: url }).run(); }} />
-      <AdminPageHeader title={title} description={t.admin.homepageSubtitle} actions={<div className="flex gap-2">{saveButton}<Button type="button" onClick={() => setPreview((value) => !value)} aria-pressed={preview} className="min-h-11 rounded-[8px] border border-border px-4 text-base font-semibold text-text transition-colors duration-200 ease-out hover:bg-surface-alt">{preview ? t.admin.hidePreview : t.admin.preview}</Button></div>} />
+      <AdminPageHeader title={title} description={t.posts.purpose} actions={<div className="flex gap-2">{saveButton}<Button type="button" onClick={() => setPreview((value) => !value)} aria-pressed={preview} className="min-h-11 rounded-[8px] border border-border px-4 text-base font-semibold text-text transition-colors duration-200 ease-out hover:bg-surface-alt">{preview ? t.admin.hidePreview : t.admin.preview}</Button></div>} />
+
+      {initialPost?.status === "published" && <div className="mb-6 rounded-[8px] border border-border bg-surface-alt p-4"><Link href={`/posts/${initialPost.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-[8px] px-2 text-base font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{t.posts.viewPost}</Link><p className="mt-1 text-sm text-text">{t.posts.savedPageHint}</p></div>}
 
       {errors.form && <p role="alert" className="mb-4 rounded-[8px] border border-border bg-surface-alt p-3 text-base text-text">{errors.form}</p>}
 
       <div className="space-y-6">
+        <header><h2 className="font-heading text-2xl text-text">{t.posts.coverHeading}</h2><p className="mt-2 text-base text-text">{t.posts.coverHelp}</p></header>
         <FormField label={t.admin.title} htmlFor="post-title" required error={errors.title}>
           <div className="relative"><input id="post-title" maxLength={255} value={form.title} onChange={(event) => setField("title", event.target.value)} className="field-input pr-20" aria-invalid={Boolean(errors.title)} /><span className="absolute right-3 top-3 text-sm text-text">{form.title.length}/255</span></div>
         </FormField>
 
-        <FormField label={t.admin.summary} htmlFor="post-summary" hint={t.admin.summaryHint} error={errors.summary}>
+        <FormField label={t.admin.summary} htmlFor="post-summary" hint={t.posts.summaryHelp} error={errors.summary}>
           <div className="relative"><textarea id="post-summary" value={form.summary ?? ""} maxLength={2000} onChange={(event) => setField("summary", event.target.value)} rows={3} className="field-input min-h-28 resize-y pr-20" aria-invalid={Boolean(errors.summary)} /><span className="absolute bottom-3 right-3 text-sm text-text">{(form.summary ?? "").length}</span></div>
         </FormField>
 
@@ -296,22 +300,14 @@ function AdminPostFormEditor({ initialPost }: EditorProps) {
           </div>
         </FormField>
 
-        <FormField label={t.admin.body} htmlFor="post-body" required error={errors.body_html || (form.body_html && isBodyEmpty(form.body_html) ? t.admin.bodyRequired : "")}>
-          <div className="overflow-hidden rounded-[8px] border border-border bg-background">
-            <div role="toolbar" aria-label={t.admin.body} className="flex flex-wrap gap-1 border-b border-border bg-surface-alt p-2">
-              <Button type="button" aria-pressed={editor?.isActive("bold") ?? false} aria-label={t.admin.toolbarBold} title={t.admin.toolbarBold} onClick={() => editor?.chain().focus().toggleBold().run()} className="flex h-10 w-10 items-center justify-center rounded-[8px] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Bold size={17} aria-hidden="true" /></Button>
-              <Button type="button" aria-pressed={editor?.isActive("italic") ?? false} aria-label={t.admin.toolbarItalic} title={t.admin.toolbarItalic} onClick={() => editor?.chain().focus().toggleItalic().run()} className="flex h-10 w-10 items-center justify-center rounded-[8px] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Italic size={17} aria-hidden="true" /></Button>
-              <Button type="button" aria-pressed={editor?.isActive("heading", { level: 2 }) ?? false} aria-label={t.admin.toolbarHeading2} title={t.admin.toolbarHeading2} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} className="flex h-10 w-10 items-center justify-center rounded-[8px] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Heading2 size={17} aria-hidden="true" /></Button>
-              <Button type="button" aria-pressed={editor?.isActive("heading", { level: 3 }) ?? false} aria-label={t.admin.toolbarHeading3} title={t.admin.toolbarHeading3} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} className="flex h-10 w-10 items-center justify-center rounded-[8px] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Heading3 size={17} aria-hidden="true" /></Button>
-              <Button type="button" aria-pressed={editor?.isActive("bulletList") ?? false} aria-label={t.admin.toolbarBullets} title={t.admin.toolbarBullets} onClick={() => editor?.chain().focus().toggleBulletList().run()} className="flex h-10 w-10 items-center justify-center rounded-[8px] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><List size={17} aria-hidden="true" /></Button>
-              <Button type="button" aria-pressed={editor?.isActive("orderedList") ?? false} aria-label={t.admin.toolbarNumbered} title={t.admin.toolbarNumbered} onClick={() => editor?.chain().focus().toggleOrderedList().run()} className="flex h-10 w-10 items-center justify-center rounded-[8px] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><ListOrdered size={17} aria-hidden="true" /></Button>
-              <Button type="button" aria-pressed={editor?.isActive("blockquote") ?? false} aria-label={t.admin.toolbarQuote} title={t.admin.toolbarQuote} onClick={() => editor?.chain().focus().toggleBlockquote().run()} className="flex h-10 w-10 items-center justify-center rounded-[8px] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Quote size={17} aria-hidden="true" /></Button>
-              <Button type="button" aria-pressed={editor?.isActive("link") ?? false} aria-label={t.admin.toolbarLink} title={t.admin.toolbarLink} onClick={insertLink} className="flex h-10 w-10 items-center justify-center rounded-[8px] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Link2 size={17} aria-hidden="true" /></Button>
-            </div>
-            <EditorContent id="post-body" editor={editor} />
-          </div>
+        <h2 className="border-t border-border pt-6 font-heading text-2xl text-text">{t.posts.articleHeading}</h2>
+        <FormField label={t.admin.body} htmlFor="post-body" hint={t.posts.bodyHelp} error={errors.body_html}>
+          <PublicationTextEditor id="post-body" label={t.admin.body} value={form.body_html} onChange={html => setField("body_html", html)} />
         </FormField>
 
+        <PublicationSectionsEditor errors={errors} sections={form.sections} onChange={sections => setField("sections", sections)} onBusyChange={setSectionUploadBusy} />
+        {errors.sections && <p role="alert" className="text-base text-red-600">{errors.sections}</p>}
+        <h2 className="border-t border-border pt-6 font-heading text-2xl text-text">{t.posts.publishingHeading}</h2>
         <div className="space-y-1.5">
           <p id="post-status-label" className="block text-base font-semibold text-text">{t.admin.statusField}</p>
           <div role="group" aria-labelledby="post-status-label" className="inline-flex rounded-[8px] border border-border bg-background p-1">
@@ -326,9 +322,9 @@ function AdminPostFormEditor({ initialPost }: EditorProps) {
 
         {preview && <section className="border-t border-border pt-6" aria-label={t.admin.preview}>
           <h2 className="font-heading text-2xl text-text">{form.title || t.admin.newPostTitle}</h2>
-          {form.thumbnail_url && <MediaImage src={form.thumbnail_url} alt="" fill sizes="(max-width: 720px) 100vw, 672px" className="object-cover" wrapperClassName="relative mt-4 aspect-[16/7] overflow-hidden rounded-[8px] border border-border" />}
+          {form.thumbnail_url && <MediaImage src={form.thumbnail_url} alt="" fill sizes="(max-width: 720px) 100vw, 672px" className="object-cover" wrapperClassName="relative block mt-4 aspect-[16/7] overflow-hidden rounded-[8px] border border-border" />}
           {form.summary && <p className="mt-4 text-lg leading-7 text-text">{form.summary}</p>}
-          <RichContent html={form.body_html} className="mt-5" />
+          <PublicationContent body={form.body_html} sections={form.sections} title={form.title} />
         </section>}
 
         <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">

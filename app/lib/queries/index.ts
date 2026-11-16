@@ -9,4 +9,4 @@ export { useMasterclassesQuery } from "@/lib/queries/masterclasses";
 export { useServiceRequestsQuery } from "@/lib/queries/services";
 export { useMembershipQuery } from "@/lib/queries/membership";
 export { useProfileQuery, useAvatarQuery } from "@/lib/queries/profile";
-export { useHomepagePostsQuery } from "@/lib/queries/posts";
+export { useHomepagePostsQuery, useHomepagePostQuery } from "@/lib/queries/posts";
